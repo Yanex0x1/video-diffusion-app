@@ -1,0 +1,49 @@
+name: Download File Example
+
+on:
+
+  push:
+
+    branches:
+
+      - main
+
+jobs:
+
+  download-file:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+    - name: Checkout Repository
+
+      uses: actions/checkout@v2
+
+    - name: Download File
+
+      run: |
+
+        mkdir download-file
+
+        curl -LJO https://huggingface.co/spaces/Hallucinate/demo
+
+
+        mv demo download-file/
+
+        
+
+    - name: Commit Changes
+
+      run: |
+
+        git config --local user.email "rdpwinn@gmail.com"
+
+        git config --local user.name "Yanex0x1"
+
+        git add downloaded-files/
+
+        git commit -m "Add downloaded file"
+
+        git push
+
