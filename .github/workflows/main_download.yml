@@ -24,12 +24,12 @@ jobs:
 
       run: |
 
-        mkdir download-file
+        mkdir download-files
 
         curl -LJO https://huggingface.co/spaces/Hallucinate/demo
 
 
-        mv demo download-file/
+        mv demo download-files/
 
         
 
@@ -41,9 +41,9 @@ jobs:
 
         git config --local user.name "Yanex0x1"
 
-        git add downloaded-files/
+        git add download-files/
 
-        git commit -m "Add downloaded file"
+        git commit -m "Add download file"
 
         git push
 
