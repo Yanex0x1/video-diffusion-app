@@ -15,54 +15,68 @@
 import subprocess, time, gc, os, sys
 
 def setup_environment():
-    start_time = time.time()
-    print_subprocess = False
-    os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb: 256"
-    #PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512
-    use_xformers_for_colab = True
+    
+    # Check if it's a Google Colab environment
     try:
         ipy = get_ipython()
     except:
         ipy = 'could not get_ipython'
+    
     if 'google.colab' in str(ipy):
-        print("..setting up environment")
 
-        # weird hack
-        #import torch
-        
-        all_process = [
-            ['git', 'clone', 'https://github.com/deforum-art/deforum-stable-diffusion'],
-            ['pip', 'install', 'omegaconf', 'einops==0.4.1', 'pytorch-lightning==1.7.7', 'torchmetrics', 'transformers', 'safetensors', 'kornia'],
-            ['pip', 'install', 'accelerate', 'ftfy', 'jsonmerge', 'matplotlib', 'resize-right', 'timm', 'torchdiffeq','scikit-learn','torchsde','open-clip-torch','numpngw'],
+        # Start the timer
+        start_time = time.time()
+
+        # Installing the necessary packages
+        packages = [
+            'torch==2.0.0 torchvision torchaudio triton xformers',
+            'einops==0.4.1 pytorch-lightning==1.7.7 torchdiffeq torchsde omegaconf',
+            'ftfy timm transformers open-clip-torch omegaconf torchmetrics',
+            'safetensors kornia accelerate jsonmerge matplotlib resize-right',
+            'scikit-learn numpngw'
         ]
-        for process in all_process:
-            running = subprocess.run(process,stdout=subprocess.PIPE).stdout.decode('utf-8')
-            if print_subprocess:
-                print(running)
+
+        for package in packages:
+            print(f"..installing {package}")
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install'] + package.split())
+
+        # Cloning the github repository
+        subprocess.check_call(['git', 'clone', 'https://github.com/deforum-art/deforum-stable-diffusion'])
+
+        # Modifying the python file
         with open('deforum-stable-diffusion/src/k_diffusion/__init__.py', 'w') as f:
             f.write('')
+
+        # Extending the system path
         sys.path.extend([
             'deforum-stable-diffusion/',
             'deforum-stable-diffusion/src',
         ])
-        if use_xformers_for_colab:
 
-            print("..installing triton and xformers")
+        # End the timer
+        end_time = time.time()
 
-            all_process = [['pip', 'install', 'triton==2.0.0.dev20221202', 'xformers==0.0.16']]
-            for process in all_process:
-                running = subprocess.run(process,stdout=subprocess.PIPE).stdout.decode('utf-8')
-                if print_subprocess:
-                    print(running)
+        # Print the time it took
+        print(f"..environment set up in {end_time-start_time:.0f} seconds")
+    
     else:
         sys.path.extend([
             'src'
         ])
-    end_time = time.time()
-    print(f"..environment set up in {end_time-start_time:.0f} seconds")
-    return
+        print("..skipping setup")
 
 setup_environment()
+
+import torch
+import random
+import clip
+from IPython import display
+from types import SimpleNamespace
+from helpers.save_images import get_output_folder
+from helpers.settings import load_args
+from helpers.render import render_animation, render_input_video, render_image_batch, render_interpolation
+from helpers.model_load import make_linear_decode, load_model, get_model_output_paths
+from helpers.aesthetics import load_aesthetics_model
 
 #————————————————————1.2. Imports————————————————————————
 
@@ -74,7 +88,7 @@ import gradio as gr
 import re
 import random
 
-from base64 import b64encode
+#from base64 import b64encode
 
 #from k_diffusion.external import CompVisDenoiser, CompVisVDenoiser
 import py3d_tools as p3dT
@@ -105,13 +119,13 @@ import requests
 
 #————————————————————1.3. Token Setup———————————————
 
-MY_SECRET_TOKEN=os.environ.get('HF_TOKEN_SD')
-device = "cuda" if torch.cuda.is_available() else "cpu" #is this needed?
+#MY_SECRET_TOKEN=os.environ.get('HF_TOKEN_SD')
+#device = "cuda" if torch.cuda.is_available() else "cpu" #is this needed?
 
 #———————————————————— infer from SD ———————————————
 
 """
-word_list_dataset = load_dataset("stabilityai/word-list", data_files="list.txt", use_auth_token=True)
+word_list_dataset = load_dataset("stabilityai/word-list", data_files="list.txt", use_auth_token=False)
 word_list = word_list_dataset["train"]['text']
 
 is_gpu_busy = False
@@ -373,7 +387,7 @@ root = SimpleNamespace(**root)
 
 root.models_path, root.output_path = get_model_output_paths(root)
 root.model, root.device = load_model(root, load_on_run_all=True, check_sha256=True, map_location=root.map_location)
-#root.model, root.device = load_model(root, load_on_run_all=True, check_sha256=True, map_location=torch.device('cpu'))
+root.model, root.device = load_model(root, load_on_run_all=True, check_sha256=True, map_location=torch.device('cuda'))
 
 
 #——————————————————— 2.1. Prompt Base ———————————————————————— #----------------CONSIDER THIS FOR INPUT/LOCK---------------
